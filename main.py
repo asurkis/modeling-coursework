@@ -1,16 +1,19 @@
-# This is a sample Python script.
+import numpy as np
+import wx
+from matplotlib import pyplot as plt
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+app = wx.App()
+frame = wx.Frame(None, title='Hello, world!')
 
+fig, ax = plt.subplots(figsize=(8, 6), dpi=108)
+ax.plot(np.linspace(0, 5, 10), np.linspace(5, 0, 10))
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+canvas = FigureCanvasWxAgg(frame, wx.ID_ANY, figure=fig)
+sizer = wx.BoxSizer()
+sizer.Add(canvas)
+sizer.Fit(frame)
 
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+frame.Show()
+app.MainLoop()
+                                                                        
