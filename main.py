@@ -1,4 +1,5 @@
 import wx.grid
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 import approximations
 import processing
 
@@ -36,6 +37,8 @@ def update_table():
 
 def handle_variant(evt):
     processing.update_variant(evt.String)
+    used = {key: cb.Value for key, cb in approximation_checkboxes.items()}
+    processing.update_used_approximations(used)
     update_table()
 
 
@@ -62,7 +65,6 @@ def toggle_approximation(evt):
 
 app = wx.App()
 settings_frame = wx.Frame(None, title='Проверка лабораторной 1')
-plot_frame = wx.MiniFrame(settings_frame, title='Настройки', style=wx.CAPTION)
 table_frame = wx.MiniFrame(settings_frame, title='Статистические параметры', style=wx.CAPTION)
 
 variant_ctrl = wx.ComboBox(settings_frame, choices=processing.all_variants.columns)
@@ -100,9 +102,10 @@ for i, key in enumerate(approximations.all_distributions):
 settings_sizer.Fit(settings_frame)
 settings_frame.Sizer = settings_sizer
 
+
 table = wx.grid.Grid(table_frame)
 table.EnableEditing(False)
-table.CreateGrid(7, 1)
+table.CreateGrid(7, 0)
 # table.SetColLabelValue(0, 'Последовательность по варианту')
 table.SetRowLabelValue(0, 'Мат. ож.')
 table.SetRowLabelValue(1, 'Дов. инт. (p=0.90)')
@@ -114,7 +117,7 @@ table.SetRowLabelValue(6, 'К. вар.')
 table.ColLabelSize = wx.grid.GRID_AUTOSIZE
 table.RowLabelSize = wx.grid.GRID_AUTOSIZE
 
+
 table_frame.Show()
-# plot_frame.Show()
 settings_frame.Show()
 app.MainLoop()

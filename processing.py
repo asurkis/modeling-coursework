@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import approximations
@@ -5,13 +6,15 @@ import approximations
 all_variants = pd.read_csv('variants.csv')
 variant_id: str
 variant: pd.Series
-current_approximations = {}
+current_series = {}
 info = {}
 sample_count = 1
 bucket_count = 1
 
 sort_order = ['variant'] + list(approximations.all_distributions.keys())
 used_series = ['variant']
+
+fig_hist = None
 
 
 def describe_series(tpl):
@@ -36,21 +39,33 @@ def describe_series(tpl):
 
 
 def update_plots():
-    pass
-
-
-def update_approximations_info():
-    pass
+    global fig_hist
+    if fig_hist is not None:
+        plt.close(fig_hist)
+    fig_hist, ax = plt.subplots()
+    values = []
+    names = []
+    for key in sort_order:
+        if key in used_series and key in current_series:
+            name, value = current_series[key]
+            values.append(value)
+            names.append(name)
+            # ax.hist(current_series[key], bins=bucket_count, label=info[key]['name'], density=True)
+    print(values)
+    if len(values) > 1:
+        ax.hist(np.array(values, dtype=object), density=True, bins=bucket_count)
+        ax.legend(names)
+    else:
+        ax.hist(values[0], density=True, bins=bucket_count)
+        ax.legend(names[0])
+    fig_hist.show()
 
 
 def recalc_approximations():
-    global current_approximations
-    current_approximations = {}
     for key in approximations.possible_distributions(mean=info['variant']['mean'], std=info['variant']['std']):
         fun = approximations.all_distributions[key]
-        current_approximations[key] = fun(mean=info['variant']['mean'], std=info['variant']['std'], size=sample_count)
-        info[key] = describe_series(current_approximations[key])
-    update_approximations_info()
+        current_series[key] = fun(mean=info['variant']['mean'], std=info['variant']['std'], size=sample_count)
+        info[key] = describe_series(current_series[key])
     update_plots()
 
 
@@ -58,7 +73,9 @@ def update_variant(v):
     global variant
     variant = all_variants[v]
     info.clear()
-    info['variant'] = describe_series(('Последовательность по варианту', variant))
+    current_series.clear()
+    current_series['variant'] = ('Последовательность по варианту', variant)
+    info['variant'] = describe_series(current_series['variant'])
     recalc_approximations()
 
 
@@ -81,8 +98,4 @@ def update_bucket_count(n):
 def update_used_approximations(used):
     global used_series
     used_series = ['variant'] + [key for key, value in used.items() if value and key in info]
-
-
-update_variant('1')
-update_sample_count(1)
-update_bucket_count(1)
+    update_plots()
