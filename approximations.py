@@ -25,7 +25,7 @@ def uniform(mean: float, std: float, size, rng=None) -> (str, np.ndarray):
     return 'Равномерное распределение', rng.uniform(low=low, high=high, size=size)
 
 
-def exponential(mean: float, _std: float, size, rng=None) -> (str, np.ndarray):
+def exponential(mean: float, std: float, size, rng=None) -> (str, np.ndarray):
     rng = g_rng if rng is None else rng
     return 'Экспоненциальное распределение', rng.exponential(scale=mean, size=size)
 
@@ -57,10 +57,26 @@ def erlang_ceil(mean: float, std: float, size, rng=None) -> (str, np.ndarray):
     return f'Распределение Эрланга {k:.0f}-го порядка', __gamma(mean=mean, shape=k, size=size, rng=rng)
 
 
-casual = {
-    'Равномерное распределение': uniform,
-    'Экспоненциальное распределение': exponential,
-    'Гамма-распределение': gamma,
-    'Распределение Эрланга с округлением вниз': erlang_floor,
-    'Распределение Эрланга с округлением вверх': erlang_ceil,
+def possible_distributions(mean: float, std: float) -> [str]:
+    answer = [
+        'uniform',
+        'exponential',
+        'gamma',
+    ]
+    if mean > std:
+        answer.append('erlang_floor')
+        answer.append('erlang_ceil')
+    else:
+        # answer.append('hyper exponential')
+        pass
+    return answer
+
+
+all_distributions = {
+    'uniform': uniform,
+    'exponential': exponential,
+    'gamma': gamma,
+    'erlang_floor': erlang_floor,
+    'erlang_ceil': erlang_ceil,
+    # 'hyper exponential': None,
 }

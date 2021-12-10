@@ -1,13 +1,58 @@
 import wx.grid
 import approximations
+import processing
+
+approximation_checkboxes = {}
+table: wx.grid.Grid
+table_frame: wx.MiniFrame
+
+precision = 2
 
 
-def update_sample_count(evt):
-    print(f'update sample count: {evt.Int}')
+def update_table():
+    needed_cols = len(processing.used_series)
+    if needed_cols < table.NumberCols:
+        table.DeleteCols(1, table.NumberCols - needed_cols)
+    elif needed_cols > table.NumberCols:
+        table.AppendCols(needed_cols - table.NumberCols)
+
+    col = 0
+    for key in processing.sort_order:
+        if key not in processing.used_series:
+            continue
+        info = processing.info[key]
+        table.SetColLabelValue(col, f"{info['name']}")
+        table.SetCellValue(0, col, f"{info['mean']:0.{precision}f}")
+        table.SetCellValue(1, col, f"{info['mean']:0.{precision}f} ± {info['epsilon'][0.90]:0.{precision}f}")
+        table.SetCellValue(2, col, f"{info['mean']:0.{precision}f} ± {info['epsilon'][0.95]:0.{precision}f}")
+        table.SetCellValue(3, col, f"{info['mean']:0.{precision}f} ± {info['epsilon'][0.99]:0.{precision}f}")
+        table.SetCellValue(4, col, f"{info['var']:0.{precision}f}")
+        table.SetCellValue(5, col, f"{info['std']:0.{precision}f}")
+        table.SetCellValue(6, col, f"{info['coeff_var']:0.{precision}f}")
+        col += 1
+    table.Fit()
+    table_frame.Fit()
 
 
-def update_plots(evt):
-    print(f'update bucket count: {evt.Int}')
+def handle_precision(evt):
+    global precision
+    precision = evt.Int
+    update_table()
+
+
+def handle_sample_count(evt):
+    processing.update_sample_count(evt.Int)
+    update_table()
+
+
+def handle_bucket_count(evt):
+    processing.update_bucket_count(evt.Int)
+
+
+def toggle_approximation(evt):
+    used = {key: cb.Value for key, cb in approximation_checkboxes.items()}
+    processing.update_used_approximations(used)
+    update_table()
 
 
 app = wx.App()
@@ -15,34 +60,52 @@ settings_frame = wx.Frame(None, title='Проверка лабораторной
 plot_frame = wx.MiniFrame(settings_frame, title='Настройки', style=wx.CAPTION)
 table_frame = wx.MiniFrame(settings_frame, title='Статистические параметры', style=wx.CAPTION)
 
+
+precision_ctrl = wx.SpinCtrl(settings_frame, min=0, max=20, initial=precision)
+sample_count_ctrl = wx.SpinCtrl(settings_frame, min=1, max=100_000, initial=processing.sample_count)
+bucket_count_ctrl = wx.SpinCtrl(settings_frame, min=1, max=1000, initial=processing.bucket_count)
+
+precision_ctrl.Bind(wx.EVT_SPINCTRL, handle_precision)
+sample_count_ctrl.Bind(wx.EVT_SPINCTRL, handle_sample_count)
+bucket_count_ctrl.Bind(wx.EVT_SPINCTRL, handle_bucket_count)
+
+precision_label = wx.StaticText(settings_frame, label='Цифры после запятой')
+sample_count_label = wx.StaticText(settings_frame, label='Количество проб')
+bucket_count_label = wx.StaticText(settings_frame, label='Размер гистограммы')
+
 settings_sizer = wx.GridBagSizer(2, hgap=10)
-sample_count_ctrl = wx.SpinCtrl(settings_frame, min=1, max=100_000, style=wx.EXPAND)
-bucket_count_ctrl = wx.SpinCtrl(settings_frame, min=1, max=1000, style=wx.EXPAND)
-settings_sizer.Add(sample_count_ctrl, (0, 0), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
-settings_sizer.Add(bucket_count_ctrl, (1, 0), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
-settings_sizer.Add(wx.StaticText(settings_frame, label='Количество проб'), (0, 1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
-settings_sizer.Add(wx.StaticText(settings_frame, label='Размер гистограммы'), (1, 1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(precision_ctrl, (0, 0), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(sample_count_ctrl, (1, 0), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(bucket_count_ctrl, (2, 0), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
-sample_count_ctrl.Bind(wx.EVT_SPINCTRL, update_sample_count)
-bucket_count_ctrl.Bind(wx.EVT_SPINCTRL, update_plots)
+settings_sizer.Add(precision_label, (0, 1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(sample_count_label, (1, 1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(bucket_count_label, (2, 1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
-for i, key in enumerate(approximations.casual):
-    checkbox = wx.CheckBox(settings_frame, label=key)
-    evt = wx.CommandEvent()
-    evt.GetClientObject()
-    checkbox.Bind(wx.EVT_CHECKBOX, lambda x: print(f'Triggered {key} ({x.IsChecked()})'))
-    settings_sizer.Add(checkbox, (i + 2, 0), (1, 2), flag=wx.EXPAND)
+for i, key in enumerate(approximations.all_distributions):
+    checkbox = wx.CheckBox(settings_frame, label=key, name=key)
+    approximation_checkboxes[key] = checkbox
+    checkbox.Bind(wx.EVT_CHECKBOX, toggle_approximation)
+    settings_sizer.Add(checkbox, (i + 3, 0), (1, 2), flag=wx.EXPAND)
 
 settings_sizer.Fit(settings_frame)
 settings_frame.Sizer = settings_sizer
 
 table = wx.grid.Grid(table_frame)
 table.EnableEditing(False)
-table.CreateGrid(5, 2)
-table.SetColLabelValue(1, 'col label')
-table.SetRowLabelValue(2, 'row label')
+table.CreateGrid(7, 1)
+# table.SetColLabelValue(0, 'Последовательность по варианту')
+table.SetRowLabelValue(0, 'Мат. ож.')
+table.SetRowLabelValue(1, 'Дов. инт. (p=0.90)')
+table.SetRowLabelValue(2, 'Дов. инт. (p=0.95)')
+table.SetRowLabelValue(3, 'Дов. инт. (p=0.99)')
+table.SetRowLabelValue(4, 'Дисперсия')
+table.SetRowLabelValue(5, 'С.к.о.')
+table.SetRowLabelValue(6, 'К. вар.')
+table.ColLabelSize = wx.grid.GRID_AUTOSIZE
+table.RowLabelSize = wx.grid.GRID_AUTOSIZE
 
-# table_frame.Show()
+table_frame.Show()
 # plot_frame.Show()
 settings_frame.Show()
 app.MainLoop()
