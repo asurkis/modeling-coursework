@@ -54,9 +54,9 @@ def recalc_approximations():
     update_plots()
 
 
-def update_variant(n):
+def update_variant(v):
     global variant
-    variant = all_variants[f'{n}']
+    variant = all_variants[v]
     info.clear()
     info['variant'] = describe_series(('Последовательность по варианту', variant))
     recalc_approximations()
@@ -83,6 +83,6 @@ def update_used_approximations(used):
     used_series = ['variant'] + [key for key, value in used.items() if value and key in info]
 
 
-update_variant(1)
+update_variant('1')
 update_sample_count(1)
 update_bucket_count(1)
