@@ -8,8 +8,8 @@ variant_id: str
 variant: pd.Series
 current_series = {}
 info = {}
-sample_count = 1
-bucket_count = 1
+sample_count = 10_000
+bucket_count = 10
 
 sort_order = ['variant'] + list(approximations.all_distributions.keys())
 used_series = ['variant']
@@ -17,7 +17,7 @@ used_series = ['variant']
 fig_hist = None
 
 
-def describe_series(tpl):
+def describe_series(tpl: (str, pd.Series)):
     name, series = tpl
     result = {
         'name': name,
@@ -47,25 +47,21 @@ def update_plots():
     names = []
     for key in sort_order:
         if key in used_series and key in current_series:
-            name, value = current_series[key]
-            values.append(value)
-            names.append(name)
-            # ax.hist(current_series[key], bins=bucket_count, label=info[key]['name'], density=True)
-    print(values)
+            values.append(current_series[key])
+            names.append(info[key]['name'])
     if len(values) > 1:
         ax.hist(np.array(values, dtype=object), density=True, bins=bucket_count)
-        ax.legend(names)
     else:
         ax.hist(values[0], density=True, bins=bucket_count)
-        ax.legend(names[0])
+    ax.legend(names)
     fig_hist.show()
 
 
 def recalc_approximations():
     for key in approximations.possible_distributions(mean=info['variant']['mean'], std=info['variant']['std']):
         fun = approximations.all_distributions[key]
-        current_series[key] = fun(mean=info['variant']['mean'], std=info['variant']['std'], size=sample_count)
-        info[key] = describe_series(current_series[key])
+        name, current_series[key] = fun(mean=info['variant']['mean'], std=info['variant']['std'], size=sample_count)
+        info[key] = describe_series((name, current_series[key]))
     update_plots()
 
 
@@ -74,8 +70,8 @@ def update_variant(v):
     variant = all_variants[v]
     info.clear()
     current_series.clear()
-    current_series['variant'] = ('Последовательность по варианту', variant)
-    info['variant'] = describe_series(current_series['variant'])
+    current_series['variant'] = variant
+    info['variant'] = describe_series(('Последовательность по варианту', variant))
     recalc_approximations()
 
 
