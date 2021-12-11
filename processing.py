@@ -40,7 +40,7 @@ class MathModel:
                 mean=self._results['variant'].mean,
                 coeff_var=self._results['variant'].coeff_var,
                 q=q, size=self._sample_count)
-            hexpi.name = f'Гиперэкспоненциальное распределение #{i}'
+            hexpi.name = f'Гиперэкспоненциальное распределение #{i + 1}'
             self._results[f'hyper_exponential_{i + 1}'] = hexpi
 
     def _get_possible_variants(self):
