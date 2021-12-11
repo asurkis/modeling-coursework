@@ -3,7 +3,26 @@ import numpy as np
 g_rng = np.random.default_rng()
 
 
-def uniform(mean: float, std: float, size, rng=None) -> (str, np.ndarray):
+class SeriesDescription:
+    def __init__(self, name: str, series: np.ndarray, params=None):
+        self.name = name
+        self.params = params
+        self.mean = series.mean()
+        self.var = series.var()
+        self.std = series.std()
+        self.coeff_var = self.std / self.mean
+
+        std_mean = self.std / len(series) ** .5
+        intervals = [{'p': 0.90, 't': 1.643},
+                     {'p': 0.95, 't': 1.960},
+                     {'p': 0.99, 't': 2.576}]
+        epsilons = {}
+        for row in intervals:
+            epsilons[row['p']] = row['p'] * row['t'] * std_mean
+        self.epsilon = epsilons
+
+
+def uniform(mean: float, std: float, size, rng=None) -> SeriesDescription:
     rng = g_rng if rng is None else rng
     # mean = (low + high) / 2
     # variation = integral from 0 to 1 of ((high - low) * (x - 0.5))^2 dx
@@ -22,12 +41,16 @@ def uniform(mean: float, std: float, size, rng=None) -> (str, np.ndarray):
     diff = 3 ** 0.5 * std
     high = mean + diff
     low = mean - diff
-    return 'Равномерное распределение', rng.uniform(low=low, high=high, size=size)
+    return SeriesDescription('Равномерное распределение',
+                             rng.uniform(low=low, high=high, size=size),
+                             {'low': low, 'high': high})
 
 
-def exponential(mean: float, std: float, size, rng=None) -> (str, np.ndarray):
+def exponential(mean: float, std: float, size, rng=None) -> SeriesDescription:
     rng = g_rng if rng is None else rng
-    return 'Экспоненциальное распределение', rng.exponential(scale=mean, size=size)
+    return SeriesDescription('Экспоненциальное распределение',
+                             rng.exponential(scale=mean, size=size),
+                             {'mean': mean})
 
 
 def __gamma(mean: float, shape: float, size, rng=None) -> np.ndarray:
@@ -35,48 +58,66 @@ def __gamma(mean: float, shape: float, size, rng=None) -> np.ndarray:
     return rng.gamma(shape=shape, scale=mean / shape, size=size)
 
 
-def gamma(mean: float, std: float, size, rng=None) -> (str, np.ndarray):
+def gamma(mean: float, std: float, size, rng=None) -> SeriesDescription:
     # std / mean = 1 / sqrt(shape)
     # mean^2 = shape * var
     # shape = mean^2 / var
     # shape * scale = mean
     # scale = mean / shape
     shape = (mean / std) ** 2
-    return 'Гамма-распределение', __gamma(mean=mean, shape=shape, size=size, rng=rng)
+    return SeriesDescription('Гамма-распределение', __gamma(mean=mean, shape=shape, size=size, rng=rng),
+                             {'mean': mean, 'shape': shape})
 
 
-def erlang_floor(mean: float, std: float, size, rng=None) -> (str, np.ndarray):
+def erlang_floor(mean: float, std: float, size, rng=None) -> SeriesDescription:
     shape = (mean / std) ** 2
     k = np.floor(shape)
-    return f'Распределение Эрланга {k:.0f}-го порядка', __gamma(mean=mean, shape=k, size=size, rng=rng)
+    return SeriesDescription('Распределение Эрланга {k:.0f}-го порядка',
+                             __gamma(mean=mean, shape=k, size=size, rng=rng),
+                             {'mean': mean, 'shape': k})
 
 
-def erlang_ceil(mean: float, std: float, size, rng=None) -> (str, np.ndarray):
+def erlang_ceil(mean: float, std: float, size, rng=None) -> SeriesDescription:
     shape = (mean / std) ** 2
     k = np.ceil(shape)
-    return f'Распределение Эрланга {k:.0f}-го порядка', __gamma(mean=mean, shape=k, size=size, rng=rng)
+    return SeriesDescription('Распределение Эрланга {k:.0f}-го порядка',
+                             __gamma(mean=mean, shape=k, size=size, rng=rng),
+                             {'mean': mean, 'shape': k})
 
 
-def possible_distributions(mean: float, std: float) -> [str]:
-    answer = [
-        'uniform',
-        'exponential',
-        'gamma',
-    ]
-    if mean > std:
-        answer.append('erlang_floor')
-        answer.append('erlang_ceil')
-    else:
-        # answer.append('hyper exponential')
-        pass
+def hyper_exponential(mean: float, std: float, q: float, size, rng=None) -> SeriesDescription:
+    rng = g_rng if rng is None else rng
+
+    dt2 = (0.5 * (1 / q - 1) * (std * std - 1))
+    dt = dt2 ** 0.5
+    t1 = (1 + dt) * mean
+    t2 = (1 - dt) * mean
+
+    exp1 = rng.exponential(scale=t1, size=size)
+    proc = rng.uniform(size=size) >= q
+    exp1[proc] *= t2 / t1
+    return SeriesDescription('Гиперэкспоненциальное распределение', exp1,
+                             {'t1': t1, 't2': t2, 'q': q, 'p': 1 - q})
+
+
+def hyper_exponential_max_q(std: float) -> float:
+    return 2 / (1 + std * std)
+
+
+mean_std_distributions = [
+    'uniform',
+    'exponential',
+    'gamma',
+    'erlang_floor',
+    'erlang_ceil',
+]
+
+all_distributions = mean_std_distributions + ['hyper_exponential']
+
+
+def possible_mean_std_distributions(coeff: float):
+    answer = {'uniform': uniform, 'exponential': exponential, 'gamma': gamma}
+    if coeff < 1:
+        answer['erlang_floor'] = erlang_floor
+        answer['erlang_ceil'] = erlang_ceil
     return answer
-
-
-all_distributions = {
-    'uniform': uniform,
-    'exponential': exponential,
-    'gamma': gamma,
-    'erlang_floor': erlang_floor,
-    'erlang_ceil': erlang_ceil,
-    # 'hyper exponential': None,
-}
