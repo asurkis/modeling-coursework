@@ -2,6 +2,7 @@ import wx.grid
 import approximations
 import processing
 
+model = processing.MathModel()
 precision = 2
 
 app = wx.App()
@@ -22,10 +23,10 @@ table.ColLabelSize = wx.grid.GRID_AUTOSIZE
 table.RowLabelSize = wx.grid.GRID_AUTOSIZE
 table.SetDefaultCellAlignment(wx.ALIGN_RIGHT, wx.ALIGN_CENTER_VERTICAL)
 
-variant_ctrl = wx.ComboBox(settings_frame, choices=processing.all_variants.columns)
+variant_ctrl = wx.ComboBox(settings_frame, choices=model.possible_variants)
 precision_ctrl = wx.SpinCtrl(settings_frame, min=0, max=20, initial=precision)
-sample_count_ctrl = wx.SpinCtrl(settings_frame, min=1, max=100_000, initial=processing.sample_count)
-bucket_count_ctrl = wx.SpinCtrl(settings_frame, min=1, max=1000, initial=processing.bucket_count)
+sample_count_ctrl = wx.SpinCtrl(settings_frame, min=1, max=100_000, initial=model.sample_count)
+bucket_count_ctrl = wx.SpinCtrl(settings_frame, min=1, max=1000, initial=model.bucket_count)
 
 base_controls = [
     precision_ctrl,
@@ -35,16 +36,18 @@ base_controls = [
 for widget in base_controls:
     widget.Enable(False)
 
-hyper_exponents_qmin_ctrl = wx.SpinCtrlDouble(settings_frame, min=0, max=1, inc=0.0001)
-hyper_exponents_qmax_ctrl = wx.SpinCtrlDouble(settings_frame, min=0, max=1, inc=0.0001)
-hyper_exponents_count_ctrl = wx.SpinCtrl(settings_frame, min=1, max=10, initial=processing.hyper_exponent_count)
+hyper_exponents_q1_ctrl = wx.SpinCtrlDouble(settings_frame, min=0.001, max=1, inc=0.001,
+                                            initial=model.hyper_exponent_q1)
+hyper_exponents_q2_ctrl = wx.SpinCtrlDouble(settings_frame, min=0.001, max=1, inc=0.001,
+                                            initial=model.hyper_exponent_q2)
+hyper_exponents_count_ctrl = wx.SpinCtrl(settings_frame, min=1, max=10, initial=model.hyper_exponent_count)
 
 variant_label = wx.StaticText(settings_frame, label='Вариант')
 precision_label = wx.StaticText(settings_frame, label='Цифры после запятой')
 sample_count_label = wx.StaticText(settings_frame, label='Количество проб')
 bucket_count_label = wx.StaticText(settings_frame, label='Размер гистограммы')
-hyper_exponents_qmin_label = wx.StaticText(settings_frame, label='q (min)')
-hyper_exponents_qmax_label = wx.StaticText(settings_frame, label='q (max)')
+hyper_exponents_q1_label = wx.StaticText(settings_frame, label='q (от)')
+hyper_exponents_q2_label = wx.StaticText(settings_frame, label='q (до)')
 hyper_exponents_count_label = wx.StaticText(settings_frame, label='Количество гиперэкспонент')
 
 settings_sizer = wx.GridBagSizer(2, hgap=10)
@@ -75,32 +78,36 @@ for i, (key, label) in enumerate(basic_names.items()):
 
 hyper_exponent_controls = [
     approximation_checkboxes['hyper_exponential'],
-    hyper_exponents_qmin_ctrl,
-    hyper_exponents_qmax_ctrl,
+    hyper_exponents_q1_ctrl,
+    hyper_exponents_q2_ctrl,
     hyper_exponents_count_ctrl,
 ]
 for widget in hyper_exponent_controls:
     widget.Enable(False)
 
-settings_sizer.Add(hyper_exponents_qmin_ctrl, (len(approximations.all_distributions) + 4, 0), flag=wx.EXPAND)
-settings_sizer.Add(hyper_exponents_qmax_ctrl, (len(approximations.all_distributions) + 5, 0), flag=wx.EXPAND)
-settings_sizer.Add(hyper_exponents_count_ctrl, (len(approximations.all_distributions) + 6, 0), flag=wx.EXPAND)
+settings_sizer.Add(hyper_exponents_q1_ctrl, (len(approximations.all_distributions) + 4, 0),
+                   flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(hyper_exponents_q2_ctrl, (len(approximations.all_distributions) + 5, 0),
+                   flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(hyper_exponents_count_ctrl, (len(approximations.all_distributions) + 6, 0),
+                   flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
-settings_sizer.Add(hyper_exponents_qmin_label, (len(approximations.all_distributions) + 4, 1), flag=wx.EXPAND)
-settings_sizer.Add(hyper_exponents_qmax_label, (len(approximations.all_distributions) + 5, 1), flag=wx.EXPAND)
-settings_sizer.Add(hyper_exponents_count_label, (len(approximations.all_distributions) + 6, 1), flag=wx.EXPAND)
+settings_sizer.Add(hyper_exponents_q1_label, (len(approximations.all_distributions) + 4, 1),
+                   flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(hyper_exponents_q2_label, (len(approximations.all_distributions) + 5, 1),
+                   flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(hyper_exponents_count_label, (len(approximations.all_distributions) + 6, 1),
+                   flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
 
 def update_table():
-    needed_cols = len(processing.used_series)
+    needed_cols = len(model.used_results)
     if needed_cols < table.NumberCols:
         table.DeleteCols(1, table.NumberCols - needed_cols)
     elif needed_cols > table.NumberCols:
         table.AppendCols(needed_cols - table.NumberCols)
 
-    col = 0
-    for key in processing.used_series:
-        info = processing.results[key]
+    for col, info in enumerate(model.used_results):
         table.SetColLabelValue(col, f'{info.name}')
         table.SetCellValue(0, col, f'{info.mean:0.{precision}f}')
         table.SetCellValue(1, col, f'{info.mean:0.{precision}f} ± {info.epsilon[0.90]:0.{precision}f}')
@@ -109,26 +116,27 @@ def update_table():
         table.SetCellValue(4, col, f'{info.var:0.{precision}f}')
         table.SetCellValue(5, col, f'{info.std:0.{precision}f}')
         table.SetCellValue(6, col, f'{info.coeff_var:0.{precision}f}')
-        col += 1
     table.Fit()
     table_frame.Fit()
 
 
 def handle_variant(evt):
-    processing.update_variant(evt.String)
-    used = {key: cb.Value for key, cb in approximation_checkboxes.items()}
-    processing.update_used_approximations(used)
+    model.variant_id = evt.String
+    model.used_keys = {key: cb.Value for key, cb in approximation_checkboxes.items()}
 
     for key, cb in approximation_checkboxes.items():
-        if key in processing.results:
-            cb.Label = processing.results[key].name
-        cb.Enable(key in processing.results)
+        if model.allowed_keys[key] and key in model.results:
+            cb.Label = model.results[key].name
+        cb.Enable(bool(model.allowed_keys[key]))
 
     for widget in base_controls:
         widget.Enable()
 
     for widget in hyper_exponent_controls:
-        widget.Enable(bool(processing.hyper_exponent_allowed()))
+        widget.Enable(bool(model.hyper_exponent_allowed))
+
+    hyper_exponents_q2_ctrl.Max = model.hyper_exponent_q2
+    hyper_exponents_q1_ctrl.Max = model.hyper_exponent_q2
 
     settings_sizer.Fit(settings_frame)
     update_table()
@@ -141,24 +149,31 @@ def handle_precision(evt):
 
 
 def handle_sample_count(evt):
-    processing.update_sample_count(evt.Int)
+    model.sample_count = evt.Int
     update_table()
 
 
 def handle_bucket_count(evt):
-    processing.update_bucket_count(evt.Int)
+    model.bucket_count = evt.Int
 
 
 def toggle_approximation(evt):
-    used = {key: cb.Value for key, cb in approximation_checkboxes.items()}
-    processing.update_used_approximations(used)
+    model.used_keys = {key: cb.Value for key, cb in approximation_checkboxes.items()}
     update_table()
 
 
-def handle_hyper_exponent(evt):
-    processing.update_hyper_exponent(hyper_exponents_qmin_ctrl.Value,
-                                     hyper_exponents_qmax_ctrl.Value,
-                                     hyper_exponents_count_ctrl.Value)
+def handle_hyper_exponent_qmin(evt):
+    model.hyper_exponent_q1 = evt.Value
+    update_table()
+
+
+def handle_hyper_exponent_qmax(evt):
+    model.hyper_exponent_q2 = evt.Value
+    update_table()
+
+
+def handle_hyper_exponent_count(evt):
+    model.hyper_exponent_count = evt.Int
     update_table()
 
 
@@ -167,9 +182,9 @@ precision_ctrl.Bind(wx.EVT_SPINCTRL, handle_precision)
 sample_count_ctrl.Bind(wx.EVT_SPINCTRL, handle_sample_count)
 bucket_count_ctrl.Bind(wx.EVT_SPINCTRL, handle_bucket_count)
 
-hyper_exponents_qmin_ctrl.Bind(wx.EVT_SPINCTRLDOUBLE, handle_hyper_exponent)
-hyper_exponents_qmax_ctrl.Bind(wx.EVT_SPINCTRLDOUBLE, handle_hyper_exponent)
-hyper_exponents_count_ctrl.Bind(wx.EVT_SPINCTRL, handle_hyper_exponent)
+hyper_exponents_q1_ctrl.Bind(wx.EVT_SPINCTRLDOUBLE, handle_hyper_exponent_qmin)
+hyper_exponents_q2_ctrl.Bind(wx.EVT_SPINCTRLDOUBLE, handle_hyper_exponent_qmax)
+hyper_exponents_count_ctrl.Bind(wx.EVT_SPINCTRL, handle_hyper_exponent_count)
 
 for checkbox in approximation_checkboxes.values():
     checkbox.Bind(wx.EVT_CHECKBOX, toggle_approximation)

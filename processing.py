@@ -3,97 +3,152 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import approximations
 
-all_variants = pd.read_csv('variants.csv')
-variant_id: str
-variant: pd.Series
-results = {}
-sample_count = 10_000
-bucket_count = 10
 
-hyper_exponent_qmin = 0.0
-hyper_exponent_qmax = 1.0
-hyper_exponent_count = 2
+class MathModel:
+    _all_variants = pd.read_csv('variants.csv')
+    _variant_id = ''
+    _variant = None
+    _results = {}
+    _allowed_keys = {key: False for key in approximations.all_distributions}
+    _used_keys = {key: False for key in approximations.all_distributions}
 
-sort_order_base = ['variant'] + approximations.mean_std_distributions
-sort_order_hyper_exponents = []
-sort_order = sort_order_base
-used_series = ['variant']
+    _sample_count = 10_000
+    _bucket_count = 10
+    _hyper_exponent_q1 = 0.001
+    _hyper_exponent_q2 = 0.001
+    _hyper_exponent_count = 2
+    _fig_hist = None
 
-fig_hist = None
+    def _recalc_mean_std_approximations(self):
+        for key, fun in approximations.possible_mean_std_distributions(
+                self._results['variant'].coeff_var).items():
+            self._results[key] = fun(mean=self._results['variant'].mean,
+                                     std=self._results['variant'].std,
+                                     size=self._sample_count)
 
+    def _recalc_hyper_exponents(self):
+        self._results = {key: val for key, val in self._results.items() if not key.startswith('hyper_exponential')}
 
-def hyper_exponent_allowed() -> bool:
-    return results['variant'].coeff_var > 1
+        qs = np.linspace(self._hyper_exponent_q1, self._hyper_exponent_q2, self._hyper_exponent_count)
+        for i, q in enumerate(qs):
+            hexpi = approximations.hyper_exponential(
+                self._results['variant'].mean, self._results['variant'].std, q, self._sample_count)
+            hexpi.name = f'Гиперэкспоненциальное распределение #{i}'
+            self._results[f'hyper_exponential_{i + 1}'] = hexpi
 
+    def _get_possible_variants(self):
+        return self._all_variants.columns
 
-def update_plots():
-    global fig_hist
-    if fig_hist is not None:
-        plt.close(fig_hist)
-    fig_hist, ax = plt.subplots()
-    values = [results[key].series for key in used_series]
-    names = [results[key].name for key in used_series]
-    if len(values) > 1:
-        ax.hist(np.array(values, dtype=object), density=True, bins=bucket_count)
-    else:
-        ax.hist(values[0], density=True, bins=bucket_count)
-    ax.legend(names)
-    fig_hist.show()
+    def _is_hyper_exponent_allowed(self):
+        return self._results['variant'].coeff_var > 1
 
+    def _get_hyper_exponent_limit(self):
+        return approximations.hyper_exponential_max_q(self._results['variant'].coeff_var)
 
-def recalc_mean_std_approximations():
-    for key, fun in approximations.possible_mean_std_distributions(
-            results['variant'].coeff_var).items():
-        results[key] = fun(mean=results['variant'].mean, std=results['variant'].std, size=sample_count)
+    def _get_results(self):
+        return self._results
 
+    def _get_allowed_keys(self):
+        return self._allowed_keys
 
-def update_variant(v):
-    global variant
-    variant = all_variants[v]
-    results.clear()
-    results['variant'] = approximations.SeriesDescription('Последовательность по варианту', variant)
-    recalc_mean_std_approximations()
+    def _get_used_results(self):
+        keys = ['variant']
+        for key in approximations.mean_std_distributions:
+            if self._used_keys[key]:
+                keys.append(key)
 
+        if self._used_keys['hyper_exponential']:
+            for key in self._results:
+                if key.startswith('hyper_exponential'):
+                    keys.append(key)
 
-def update_sample_count(n):
-    global sample_count
-    if sample_count == n:
-        return
-    sample_count = n
-    recalc_mean_std_approximations()
+        used_results = [self._results[key] for key in keys]
+        return used_results
 
+    def _get_sample_count(self):
+        return self._sample_count
 
-def update_bucket_count(n):
-    global bucket_count
-    if bucket_count == n:
-        return
-    bucket_count = n
+    def _get_bucket_count(self):
+        return self._bucket_count
 
+    def _get_hyper_exponent_q1(self):
+        return self._hyper_exponent_q1
 
-def update_used_approximations(used):
-    used_series.clear()
-    used_series.append('variant')
-    for key in sort_order:
-        if key in results and (
-                (key in used and used[key]) or (key.startswith('hyper_exponential') and used['hyper_exponential'])):
-            used_series.append(key)
+    def _get_hyper_exponent_q2(self):
+        return self._hyper_exponent_q2
 
+    def _get_hyper_exponent_count(self):
+        return self._hyper_exponent_count
 
-def update_hyper_exponent(qmin, qmax, qn):
-    global hyper_exponent_qmin
-    global hyper_exponent_qmax
-    global hyper_exponent_count
-    hyper_exponent_qmin = qmin
-    hyper_exponent_qmax = qmax
-    hyper_exponent_count = qn
+    def _set_variant_id(self, variant_id):
+        if self._variant_id == variant_id:
+            return
+        self._variant_id = variant_id
+        self._variant = self._all_variants[variant_id].to_numpy()
+        self._results.clear()
+        self._results['variant'] = approximations.SeriesDescription(name='Последовательность по варианту',
+                                                                    series=self._variant)
+        self._allowed_keys['uniform'] = True
+        self._allowed_keys['uniform'] = True
+        self._allowed_keys['exponential'] = True
+        self._allowed_keys['gamma'] = True
+        self._allowed_keys['erlang_floor'] = not self.hyper_exponent_allowed
+        self._allowed_keys['erlang_ceil'] = not self.hyper_exponent_allowed
+        self._allowed_keys['hyper_exponential'] = self.hyper_exponent_allowed
 
-    qs = np.linspace(qmin, qmax, qn)
-    sort_order_hyper_exponents.clear()
-    for i, q in enumerate(qs):
-        hexpi = approximations.hyper_exponential(results['variant'].mean, results['variant'].std, q, sample_count)
-        hexpi.name = f'Гиперэкспоненциальное распределение #{i}'
-        results[f'hyper_exponential_{i}'] = hexpi
-        sort_order_hyper_exponents.append(f'hyper_exponential_{i}')
+        self._recalc_mean_std_approximations()
 
-    global sort_order
-    sort_order = sort_order_base + sort_order_hyper_exponents
+    def _set_sample_count(self, sample_count):
+        if self._sample_count == sample_count:
+            return
+        self._sample_count = sample_count
+        self._recalc_mean_std_approximations()
+
+    def _set_bucket_count(self, bucket_count):
+        if self._bucket_count == bucket_count:
+            return
+        self._bucket_count = bucket_count
+
+    def _set_hyper_exponent_q1(self, hyper_exponent_qmin):
+        self._hyper_exponent_q1 = hyper_exponent_qmin
+        self._recalc_hyper_exponents()
+
+    def _set_hyper_exponent_q2(self, hyper_exponent_qmax):
+        self._hyper_exponent_q2 = hyper_exponent_qmax
+        self._recalc_hyper_exponents()
+
+    def _set_hyper_exponent_count(self, hyper_exponent_count):
+        if self._hyper_exponent_count == hyper_exponent_count: return
+        self._hyper_exponent_count = hyper_exponent_count
+        self._recalc_hyper_exponents()
+
+    def _set_used_keys(self, used_keys):
+        self._used_keys = used_keys
+
+    possible_variants = property(fget=_get_possible_variants)
+    variant_id = property(fset=_set_variant_id)
+    allowed_keys = property(fget=_get_allowed_keys)
+    results = property(fget=_get_results)
+    used_keys = property(fset=_set_used_keys)
+    used_results = property(fget=_get_used_results)
+    sample_count = property(fget=_get_sample_count, fset=_set_sample_count)
+    bucket_count = property(fget=_get_bucket_count, fset=_set_bucket_count)
+
+    hyper_exponent_limit = property(fget=_get_hyper_exponent_limit)
+    hyper_exponent_q1 = property(fget=_get_hyper_exponent_q1, fset=_set_hyper_exponent_q1)
+    hyper_exponent_q2 = property(fget=_get_hyper_exponent_q2, fset=_set_hyper_exponent_q2)
+    hyper_exponent_count = property(fget=_get_hyper_exponent_count, fset=_set_hyper_exponent_count)
+    hyper_exponent_allowed = property(fget=_is_hyper_exponent_allowed)
+
+    def make_plots(self):
+        if self._fig_hist is not None:
+            plt.close(self._fig_hist)
+        self._fig_hist, ax = plt.subplots()
+        values = [self._results[key].series for key in self._used_results_mean_std]
+        names = [self._results[key].name for key in self._used_results_mean_std]
+        if len(values) > 1:
+            ax.hist(np.array(values, dtype=object), density=True, bins=self._bucket_count)
+        else:
+            ax.hist(values[0], density=True, bins=self._bucket_count)
+        ax.legend(names)
+        self._fig_hist.show()

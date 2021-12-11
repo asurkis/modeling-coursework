@@ -88,7 +88,7 @@ def erlang_ceil(mean: float, std: float, size, rng=None) -> SeriesDescription:
 def hyper_exponential(mean: float, std: float, q: float, size, rng=None) -> SeriesDescription:
     rng = g_rng if rng is None else rng
 
-    dt2 = (0.5 * (1 / q - 1) * (std * std - 1))
+    dt2 = 0.5 * (1 / q - 1) * (std * std - 1)
     dt = dt2 ** 0.5
     t1 = (1 + dt) * mean
     t2 = (1 - dt) * mean
@@ -100,8 +100,8 @@ def hyper_exponential(mean: float, std: float, q: float, size, rng=None) -> Seri
                              {'t1': t1, 't2': t2, 'q': q, 'p': 1 - q})
 
 
-def hyper_exponential_max_q(std: float) -> float:
-    return 2 / (1 + std * std)
+def hyper_exponential_max_q(coeff_var: float) -> float:
+    return 2 / (1 + coeff_var * coeff_var)
 
 
 mean_std_distributions = [
