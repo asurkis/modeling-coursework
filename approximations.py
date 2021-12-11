@@ -7,6 +7,7 @@ class SeriesDescription:
     def __init__(self, name: str, series: np.ndarray, params=None):
         self.name = name
         self.params = params
+        self.series = series
         self.mean = series.mean()
         self.var = series.var()
         self.std = series.std()
@@ -72,7 +73,7 @@ def gamma(mean: float, std: float, size, rng=None) -> SeriesDescription:
 def erlang_floor(mean: float, std: float, size, rng=None) -> SeriesDescription:
     shape = (mean / std) ** 2
     k = np.floor(shape)
-    return SeriesDescription('Распределение Эрланга {k:.0f}-го порядка',
+    return SeriesDescription(f'Распределение Эрланга {k:.0f}-го порядка',
                              __gamma(mean=mean, shape=k, size=size, rng=rng),
                              {'mean': mean, 'shape': k})
 
@@ -80,7 +81,7 @@ def erlang_floor(mean: float, std: float, size, rng=None) -> SeriesDescription:
 def erlang_ceil(mean: float, std: float, size, rng=None) -> SeriesDescription:
     shape = (mean / std) ** 2
     k = np.ceil(shape)
-    return SeriesDescription('Распределение Эрланга {k:.0f}-го порядка',
+    return SeriesDescription(f'Распределение Эрланга {k:.0f}-го порядка',
                              __gamma(mean=mean, shape=k, size=size, rng=rng),
                              {'mean': mean, 'shape': k})
 

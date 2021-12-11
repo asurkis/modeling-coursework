@@ -14,10 +14,15 @@ class MathModel:
 
     _sample_count = 10_000
     _bucket_count = 10
+    _autocorr_begin = 0
+    _autocorr_end = 10
+    _autocorrs = []
+
     _hyper_exponent_q1 = 0.001
     _hyper_exponent_q2 = 0.001
     _hyper_exponent_count = 2
     _fig_hist = None
+    _fig_autocorr = None
 
     def _recalc_mean_std_approximations(self):
         for key, fun in approximations.possible_mean_std_distributions(
@@ -27,6 +32,8 @@ class MathModel:
                                      size=self._sample_count)
 
     def _recalc_hyper_exponents(self):
+        if not self.hyper_exponent_allowed:
+            return
         self._results = {key: val for key, val in self._results.items() if not key.startswith('hyper_exponential')}
 
         qs = np.linspace(self._hyper_exponent_q1, self._hyper_exponent_q2, self._hyper_exponent_count)
@@ -100,11 +107,16 @@ class MathModel:
 
         self._recalc_mean_std_approximations()
 
+        self._hyper_exponent_q1 = min(self._hyper_exponent_q1, self.hyper_exponent_limit)
+        self._hyper_exponent_q2 = min(self._hyper_exponent_q2, self.hyper_exponent_limit)
+        self._recalc_hyper_exponents()
+
     def _set_sample_count(self, sample_count):
         if self._sample_count == sample_count:
             return
         self._sample_count = sample_count
         self._recalc_mean_std_approximations()
+        self._recalc_hyper_exponents()
 
     def _set_bucket_count(self, bucket_count):
         if self._bucket_count == bucket_count:
@@ -142,7 +154,7 @@ class MathModel:
     hyper_exponent_count = property(fget=_get_hyper_exponent_count, fset=_set_hyper_exponent_count)
     hyper_exponent_allowed = property(fget=_is_hyper_exponent_allowed)
 
-    def make_plots(self):
+    def plot_histograms(self):
         if self._fig_hist is not None:
             plt.close(self._fig_hist)
         self._fig_hist, ax = plt.subplots()
@@ -155,3 +167,18 @@ class MathModel:
             ax.hist(values[0], density=True, bins=self._bucket_count)
         ax.legend(names)
         self._fig_hist.show()
+
+    def plot_autocorr(self):
+        if self._fig_autocorr is not None:
+            plt.close(self._fig_autocorr)
+        self._fig_autocorr, ax = plt.subplots()
+        used_results = self.used_results
+        for r in used_results:
+            this_autocorr = []
+            for i in range(1, len(r.series) - 2):
+                coef = np.corrcoef(r.series[:-i], r.series[i:])
+                this_autocorr.append(np.abs(coef[0][1]))
+            ax.plot(this_autocorr)
+        names = [r.name for r in used_results]
+        ax.legend(names)
+        self._fig_autocorr.show()

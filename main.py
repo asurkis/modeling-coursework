@@ -8,6 +8,8 @@ precision = 2
 app = wx.App()
 settings_frame = wx.Frame(None, title='Проверка лабораторной 1', style=wx.DEFAULT_FRAME_STYLE & ~wx.RESIZE_BORDER)
 stats_table_frame = wx.MiniFrame(settings_frame, title='Статистические параметры', style=wx.CAPTION)
+# autocorr_table_frame = wx.MiniFrame(settings_frame, title='Автокорреляция', style=wx.CAPTION)
+params_table_frame = wx.MiniFrame(settings_frame, title='Параметры распределений', style=wx.CAPTION)
 
 stats_table = wx.grid.Grid(stats_table_frame)
 stats_table.EnableEditing(False)
@@ -23,15 +25,33 @@ stats_table.ColLabelSize = wx.grid.GRID_AUTOSIZE
 stats_table.RowLabelSize = wx.grid.GRID_AUTOSIZE
 stats_table.SetDefaultCellAlignment(wx.ALIGN_RIGHT, wx.ALIGN_CENTER_VERTICAL)
 
+# autocorr_table = wx.grid.Grid(autocorr_table_frame)
+# autocorr_table.EnableEditing(False)
+# autocorr_table.CreateGrid(0, 0)
+# autocorr_table.ColLabelSize = wx.grid.GRID_AUTOSIZE
+# autocorr_table.RowLabelSize = wx.grid.GRID_AUTOSIZE
+# autocorr_table.SetDefaultCellAlignment(wx.ALIGN_RIGHT, wx.ALIGN_CENTER_VERTICAL)
+
+params_table = wx.grid.Grid(params_table_frame)
+params_table.EnableEditing(False)
+params_table.CreateGrid(4, 0)
+params_table.ColLabelSize = wx.grid.GRID_AUTOSIZE
+params_table.RowLabelSize = wx.grid.GRID_AUTOSIZE
+
 variant_ctrl = wx.ComboBox(settings_frame, choices=model.possible_variants)
 precision_ctrl = wx.SpinCtrl(settings_frame, min=0, max=20, initial=precision)
 sample_count_ctrl = wx.SpinCtrl(settings_frame, min=1, max=100_000, initial=model.sample_count)
 bucket_count_ctrl = wx.SpinCtrl(settings_frame, min=1, max=1000, initial=model.bucket_count)
 
+plot_hist_btn = wx.Button(settings_frame, label='Построить гистограммы')
+plot_autocorr_btn = wx.Button(settings_frame, label='Построить графики автокорреляции')
+
 base_controls = [
     precision_ctrl,
     sample_count_ctrl,
-    bucket_count_ctrl
+    bucket_count_ctrl,
+    plot_hist_btn,
+    plot_autocorr_btn,
 ]
 for widget in base_controls:
     widget.Enable(False)
@@ -69,12 +89,13 @@ basic_names = {
     'erlang_ceil': 'Распределение Эрланга 2',
     'hyper_exponential': 'Гиперэкспоненциальное распределение',
 }
+y_shift = 4
 approximation_checkboxes = {}
 for i, (key, label) in enumerate(basic_names.items()):
     checkbox = wx.CheckBox(settings_frame, label=label, name=key)
     approximation_checkboxes[key] = checkbox
     checkbox.Enable(False)
-    settings_sizer.Add(checkbox, (i + 4, 0), (1, 2), flag=wx.EXPAND)
+    settings_sizer.Add(checkbox, (y_shift + i, 0), (1, 2), flag=wx.EXPAND)
 
 hyper_exponent_controls = [
     approximation_checkboxes['hyper_exponential'],
@@ -85,29 +106,38 @@ hyper_exponent_controls = [
 for widget in hyper_exponent_controls:
     widget.Enable(False)
 
-settings_sizer.Add(hyper_exponents_q1_ctrl, (len(approximations.all_distributions) + 4, 0),
-                   flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
-settings_sizer.Add(hyper_exponents_q2_ctrl, (len(approximations.all_distributions) + 5, 0),
-                   flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
-settings_sizer.Add(hyper_exponents_count_ctrl, (len(approximations.all_distributions) + 6, 0),
-                   flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+y_shift = len(approximations.all_distributions) + 4
+settings_sizer.Add(hyper_exponents_q1_ctrl, (y_shift + 0, 0), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(hyper_exponents_q2_ctrl, (y_shift + 1, 0), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(hyper_exponents_count_ctrl, (y_shift + 2, 0), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
 
-settings_sizer.Add(hyper_exponents_q1_label, (len(approximations.all_distributions) + 4, 1),
-                   flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
-settings_sizer.Add(hyper_exponents_q2_label, (len(approximations.all_distributions) + 5, 1),
-                   flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
-settings_sizer.Add(hyper_exponents_count_label, (len(approximations.all_distributions) + 6, 1),
-                   flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(hyper_exponents_q1_label, (y_shift + 0, 1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(hyper_exponents_q2_label, (y_shift + 1, 1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+settings_sizer.Add(hyper_exponents_count_label, (y_shift + 2, 1), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
+
+settings_sizer.Add(plot_hist_btn, (y_shift + 3, 0), (1, 2), flag=wx.EXPAND)
+settings_sizer.Add(plot_autocorr_btn, (y_shift + 4, 0), (1, 2), flag=wx.EXPAND)
+
+
+def adjust_table_size(table: wx.grid.Grid, required_rows: int, required_cols: int):
+    if table.NumberCols < required_cols:
+        table.AppendCols(required_cols - table.NumberCols)
+    elif table.NumberCols > required_cols:
+        table.DeleteCols(0, table.NumberCols - required_cols)
+
+    if table.NumberRows < required_rows:
+        table.AppendRows(required_rows - table.NumberRows)
+    elif table.NumberRows > required_rows:
+        table.DeleteRows(0, table.NumberRows - required_rows)
 
 
 def update_table():
-    needed_cols = len(model.used_results)
-    if needed_cols < stats_table.NumberCols:
-        stats_table.DeleteCols(1, stats_table.NumberCols - needed_cols)
-    elif needed_cols > stats_table.NumberCols:
-        stats_table.AppendCols(needed_cols - stats_table.NumberCols)
+    used_results = model.used_results
+    adjust_table_size(stats_table, 7, len(used_results))
+    # adjust_table_size(autocorr_table, 0, len(used_results))
+    adjust_table_size(params_table, 4, len(used_results) - 1)
 
-    for col, info in enumerate(model.used_results):
+    for col, info in enumerate(used_results):
         stats_table.SetColLabelValue(col, f'{info.name}')
         stats_table.SetCellValue(0, col, f'{info.mean:0.{precision}f}')
         stats_table.SetCellValue(1, col, f'{info.mean:0.{precision}f} ± {info.epsilon[0.90]:0.{precision}f}')
@@ -116,8 +146,20 @@ def update_table():
         stats_table.SetCellValue(4, col, f'{info.var:0.{precision}f}')
         stats_table.SetCellValue(5, col, f'{info.std:0.{precision}f}')
         stats_table.SetCellValue(6, col, f'{info.coeff_var:0.{precision}f}')
+
+        # autocorr_table.SetColLabelValue(col, f'{info.name}')
+
+        if col >= 1:
+            for row, (key, val) in enumerate(info.params.items()):
+                params_table.SetColLabelValue(col - 1, f'{info.name}')
+                params_table.SetCellValue(row, col - 1, f'{key} = {val:0.{precision}f}')
+
     stats_table.Fit()
+    # autocorr_table.Fit()
+    params_table.Fit()
     stats_table_frame.Fit()
+    # autocorr_table_frame.Fit()
+    params_table_frame.Fit()
 
 
 def handle_variant(evt):
@@ -177,10 +219,21 @@ def handle_hyper_exponent_count(evt):
     update_table()
 
 
+def handle_plot_histograms(evt):
+    model.plot_histograms()
+
+
+def handle_plot_autocorr(evt):
+    model.plot_autocorr()
+
+
 variant_ctrl.Bind(wx.EVT_COMBOBOX, handle_variant)
 precision_ctrl.Bind(wx.EVT_SPINCTRL, handle_precision)
 sample_count_ctrl.Bind(wx.EVT_SPINCTRL, handle_sample_count)
 bucket_count_ctrl.Bind(wx.EVT_SPINCTRL, handle_bucket_count)
+
+plot_hist_btn.Bind(wx.EVT_BUTTON, handle_plot_histograms)
+plot_autocorr_btn.Bind(wx.EVT_BUTTON, handle_plot_autocorr)
 
 hyper_exponents_q1_ctrl.Bind(wx.EVT_SPINCTRLDOUBLE, handle_hyper_exponent_qmin)
 hyper_exponents_q2_ctrl.Bind(wx.EVT_SPINCTRLDOUBLE, handle_hyper_exponent_qmax)
@@ -190,8 +243,11 @@ for checkbox in approximation_checkboxes.values():
     checkbox.Bind(wx.EVT_CHECKBOX, toggle_approximation)
 
 settings_frame.Sizer = settings_sizer
-settings_frame.Fit()
+settings_sizer.Fit(settings_frame)
+# settings_frame.Fit()
 
+params_table_frame.Show()
+# autocorr_table_frame.Show()
 stats_table_frame.Show()
 settings_frame.Show()
 app.MainLoop()
