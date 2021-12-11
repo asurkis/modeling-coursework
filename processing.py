@@ -21,8 +21,6 @@ class MathModel:
     _hyper_exponent_q1 = 0.001
     _hyper_exponent_q2 = 0.001
     _hyper_exponent_count = 2
-    _fig_hist = None
-    _fig_autocorr = None
 
     def _recalc_mean_std_approximations(self):
         for key, fun in approximations.possible_mean_std_distributions(
@@ -155,30 +153,23 @@ class MathModel:
     hyper_exponent_allowed = property(fget=_is_hyper_exponent_allowed)
 
     def plot_histograms(self):
-        if self._fig_hist is not None:
-            plt.close(self._fig_hist)
-        self._fig_hist, ax = plt.subplots()
         used_results = self.used_results
         values = [r.series for r in used_results]
         names = [r.name for r in used_results]
         if len(values) > 1:
-            ax.hist(np.array(values, dtype=object), density=True, bins=self._bucket_count)
+            plt.hist(np.array(values, dtype=object), density=True, bins=self._bucket_count)
         else:
-            ax.hist(values[0], density=True, bins=self._bucket_count)
-        ax.legend(names)
-        self._fig_hist.show()
+            plt.hist(values[0], density=True, bins=self._bucket_count)
+        plt.legend(names)
+        plt.show()
 
     def plot_autocorr(self):
-        if self._fig_autocorr is not None:
-            plt.close(self._fig_autocorr)
-        self._fig_autocorr, ax = plt.subplots()
         used_results = self.used_results
         for r in used_results:
             this_autocorr = []
             for i in range(1, len(r.series) - 2):
                 coef = np.corrcoef(r.series[:-i], r.series[i:])
                 this_autocorr.append(np.abs(coef[0][1]))
-            ax.plot(this_autocorr)
+            plt.plot(this_autocorr)
         names = [r.name for r in used_results]
-        ax.legend(names)
-        self._fig_autocorr.show()
+        plt.legend(names)
