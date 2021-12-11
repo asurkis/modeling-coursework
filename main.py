@@ -7,21 +7,21 @@ precision = 2
 
 app = wx.App()
 settings_frame = wx.Frame(None, title='Проверка лабораторной 1', style=wx.DEFAULT_FRAME_STYLE & ~wx.RESIZE_BORDER)
-table_frame = wx.MiniFrame(settings_frame, title='Статистические параметры', style=wx.CAPTION)
+stats_table_frame = wx.MiniFrame(settings_frame, title='Статистические параметры', style=wx.CAPTION)
 
-table = wx.grid.Grid(table_frame)
-table.EnableEditing(False)
-table.CreateGrid(7, 0)
-table.SetRowLabelValue(0, 'Мат. ож.')
-table.SetRowLabelValue(1, 'Дов. инт. (p=0.90)')
-table.SetRowLabelValue(2, 'Дов. инт. (p=0.95)')
-table.SetRowLabelValue(3, 'Дов. инт. (p=0.99)')
-table.SetRowLabelValue(4, 'Дисперсия')
-table.SetRowLabelValue(5, 'С.к.о.')
-table.SetRowLabelValue(6, 'К. вар.')
-table.ColLabelSize = wx.grid.GRID_AUTOSIZE
-table.RowLabelSize = wx.grid.GRID_AUTOSIZE
-table.SetDefaultCellAlignment(wx.ALIGN_RIGHT, wx.ALIGN_CENTER_VERTICAL)
+stats_table = wx.grid.Grid(stats_table_frame)
+stats_table.EnableEditing(False)
+stats_table.CreateGrid(7, 0)
+stats_table.SetRowLabelValue(0, 'Мат. ож.')
+stats_table.SetRowLabelValue(1, 'Дов. инт. (p=0.90)')
+stats_table.SetRowLabelValue(2, 'Дов. инт. (p=0.95)')
+stats_table.SetRowLabelValue(3, 'Дов. инт. (p=0.99)')
+stats_table.SetRowLabelValue(4, 'Дисперсия')
+stats_table.SetRowLabelValue(5, 'С.к.о.')
+stats_table.SetRowLabelValue(6, 'К. вар.')
+stats_table.ColLabelSize = wx.grid.GRID_AUTOSIZE
+stats_table.RowLabelSize = wx.grid.GRID_AUTOSIZE
+stats_table.SetDefaultCellAlignment(wx.ALIGN_RIGHT, wx.ALIGN_CENTER_VERTICAL)
 
 variant_ctrl = wx.ComboBox(settings_frame, choices=model.possible_variants)
 precision_ctrl = wx.SpinCtrl(settings_frame, min=0, max=20, initial=precision)
@@ -102,22 +102,22 @@ settings_sizer.Add(hyper_exponents_count_label, (len(approximations.all_distribu
 
 def update_table():
     needed_cols = len(model.used_results)
-    if needed_cols < table.NumberCols:
-        table.DeleteCols(1, table.NumberCols - needed_cols)
-    elif needed_cols > table.NumberCols:
-        table.AppendCols(needed_cols - table.NumberCols)
+    if needed_cols < stats_table.NumberCols:
+        stats_table.DeleteCols(1, stats_table.NumberCols - needed_cols)
+    elif needed_cols > stats_table.NumberCols:
+        stats_table.AppendCols(needed_cols - stats_table.NumberCols)
 
     for col, info in enumerate(model.used_results):
-        table.SetColLabelValue(col, f'{info.name}')
-        table.SetCellValue(0, col, f'{info.mean:0.{precision}f}')
-        table.SetCellValue(1, col, f'{info.mean:0.{precision}f} ± {info.epsilon[0.90]:0.{precision}f}')
-        table.SetCellValue(2, col, f'{info.mean:0.{precision}f} ± {info.epsilon[0.95]:0.{precision}f}')
-        table.SetCellValue(3, col, f'{info.mean:0.{precision}f} ± {info.epsilon[0.99]:0.{precision}f}')
-        table.SetCellValue(4, col, f'{info.var:0.{precision}f}')
-        table.SetCellValue(5, col, f'{info.std:0.{precision}f}')
-        table.SetCellValue(6, col, f'{info.coeff_var:0.{precision}f}')
-    table.Fit()
-    table_frame.Fit()
+        stats_table.SetColLabelValue(col, f'{info.name}')
+        stats_table.SetCellValue(0, col, f'{info.mean:0.{precision}f}')
+        stats_table.SetCellValue(1, col, f'{info.mean:0.{precision}f} ± {info.epsilon[0.90]:0.{precision}f}')
+        stats_table.SetCellValue(2, col, f'{info.mean:0.{precision}f} ± {info.epsilon[0.95]:0.{precision}f}')
+        stats_table.SetCellValue(3, col, f'{info.mean:0.{precision}f} ± {info.epsilon[0.99]:0.{precision}f}')
+        stats_table.SetCellValue(4, col, f'{info.var:0.{precision}f}')
+        stats_table.SetCellValue(5, col, f'{info.std:0.{precision}f}')
+        stats_table.SetCellValue(6, col, f'{info.coeff_var:0.{precision}f}')
+    stats_table.Fit()
+    stats_table_frame.Fit()
 
 
 def handle_variant(evt):
@@ -135,8 +135,8 @@ def handle_variant(evt):
     for widget in hyper_exponent_controls:
         widget.Enable(bool(model.hyper_exponent_allowed))
 
-    hyper_exponents_q2_ctrl.Max = model.hyper_exponent_q2
-    hyper_exponents_q1_ctrl.Max = model.hyper_exponent_q2
+    hyper_exponents_q1_ctrl.Max = model.hyper_exponent_limit
+    hyper_exponents_q2_ctrl.Max = model.hyper_exponent_limit
 
     settings_sizer.Fit(settings_frame)
     update_table()
@@ -192,6 +192,6 @@ for checkbox in approximation_checkboxes.values():
 settings_frame.Sizer = settings_sizer
 settings_frame.Fit()
 
-table_frame.Show()
+stats_table_frame.Show()
 settings_frame.Show()
 app.MainLoop()

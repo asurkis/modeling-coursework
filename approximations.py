@@ -85,18 +85,17 @@ def erlang_ceil(mean: float, std: float, size, rng=None) -> SeriesDescription:
                              {'mean': mean, 'shape': k})
 
 
-def hyper_exponential(mean: float, std: float, q: float, size, rng=None) -> SeriesDescription:
+def hyper_exponential(mean: float, coeff_var: float, q: float, size, rng=None) -> SeriesDescription:
     rng = g_rng if rng is None else rng
 
-    dt2 = 0.5 * (1 / q - 1) * (std * std - 1)
-    dt = dt2 ** 0.5
-    t1 = (1 + dt) * mean
-    t2 = (1 - dt) * mean
+    t1 = (1 + ((1 - q) / (2 * q) * (coeff_var * coeff_var - 1)) ** 0.5) * mean
+    t2 = (1 - (q / (2 * (1 - q)) * (coeff_var * coeff_var - 1)) ** 0.5) * mean
 
-    exp1 = rng.exponential(scale=t1, size=size)
+    exp1 = np.sign(t1) * rng.exponential(scale=np.abs(t1), size=size)
+    exp2 = np.sign(t2) * rng.exponential(scale=np.abs(t2), size=size)
     proc = rng.uniform(size=size) >= q
     exp1[proc] *= t2 / t1
-    return SeriesDescription('Гиперэкспоненциальное распределение', exp1,
+    return SeriesDescription('Гиперэкспоненциальное распределение', exp1 + exp2,
                              {'t1': t1, 't2': t2, 'q': q, 'p': 1 - q})
 
 

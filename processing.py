@@ -32,7 +32,9 @@ class MathModel:
         qs = np.linspace(self._hyper_exponent_q1, self._hyper_exponent_q2, self._hyper_exponent_count)
         for i, q in enumerate(qs):
             hexpi = approximations.hyper_exponential(
-                self._results['variant'].mean, self._results['variant'].std, q, self._sample_count)
+                mean=self._results['variant'].mean,
+                coeff_var=self._results['variant'].coeff_var,
+                q=q, size=self._sample_count)
             hexpi.name = f'Гиперэкспоненциальное распределение #{i}'
             self._results[f'hyper_exponential_{i + 1}'] = hexpi
 
@@ -144,8 +146,9 @@ class MathModel:
         if self._fig_hist is not None:
             plt.close(self._fig_hist)
         self._fig_hist, ax = plt.subplots()
-        values = [self._results[key].series for key in self._used_results_mean_std]
-        names = [self._results[key].name for key in self._used_results_mean_std]
+        used_results = self.used_results
+        values = [r.series for r in used_results]
+        names = [r.name for r in used_results]
         if len(values) > 1:
             ax.hist(np.array(values, dtype=object), density=True, bins=self._bucket_count)
         else:
