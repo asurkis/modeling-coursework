@@ -173,3 +173,4 @@ class MathModel:
             plt.plot(this_autocorr)
         names = [r.name for r in used_results]
         plt.legend(names)
+        plt.show()
