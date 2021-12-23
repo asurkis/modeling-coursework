@@ -64,10 +64,12 @@ hyper_exponents_count_ctrl = wx.SpinCtrl(settings_frame, min=1, max=10, initial=
 
 variant_label = wx.StaticText(settings_frame, label='Вариант')
 precision_label = wx.StaticText(settings_frame, label='Цифры после запятой')
-sample_count_label = wx.StaticText(settings_frame, label='Количество проб')
-bucket_count_label = wx.StaticText(settings_frame, label='Размер гистограммы')
-hyper_exponents_q1_label = wx.StaticText(settings_frame, label='q (от)')
-hyper_exponents_q2_label = wx.StaticText(settings_frame, label='q (до)')
+sample_count_label = wx.StaticText(settings_frame, label='Размер случайной выборки')
+bucket_count_label = wx.StaticText(settings_frame, label='Количество интервалов на гистограмме')
+hyper_exponents_q1_label = wx.StaticText(settings_frame,
+                                         label='Параметр Q первого гиперэкспоненциального распределения')
+hyper_exponents_q2_label = wx.StaticText(settings_frame,
+                                         label='Параметр Q последнего гиперэкспоненциального распределения')
 hyper_exponents_count_label = wx.StaticText(settings_frame, label='Количество гиперэкспонент')
 
 settings_sizer = wx.GridBagSizer(2, hgap=10)
