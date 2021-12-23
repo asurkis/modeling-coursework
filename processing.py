@@ -153,7 +153,7 @@ class MathModel:
     hyper_exponent_allowed = property(fget=_is_hyper_exponent_allowed)
 
     def plot_histograms(self):
-        plt.clf()
+        plt.cla()
         used_results = self.used_results
         values = [r.series for r in used_results]
         names = [r.name for r in used_results]
@@ -165,7 +165,7 @@ class MathModel:
         plt.show()
 
     def plot_autocorr(self):
-        plt.clf()
+        plt.cla()
         used_results = self.used_results
         for r in used_results:
             this_autocorr = []
