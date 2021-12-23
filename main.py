@@ -71,6 +71,23 @@ hyper_exponents_q1_label = wx.StaticText(settings_frame,
 hyper_exponents_q2_label = wx.StaticText(settings_frame,
                                          label='Параметр Q последнего гиперэкспоненциального распределения')
 hyper_exponents_count_label = wx.StaticText(settings_frame, label='Количество гиперэкспонент')
+hyper_exponents_explanation_label = wx.StaticText(settings_frame, label='''
+Гиперэкспонента с параметрами Q, t1, t2
+с вероятностью Q принимает значение, распределенное по
+экспоненциальному закону с математическим ожиданием t1,
+и с вероятностью P = 1 - Q — с t2.
+t1 и t2 вычисляются из Q, чтобы математическое ожидание и коэффициент вариации
+совпали у гиперэкспоненциального распределения и последовательности по варианту.
+
+Q выбирается у первого и последнего гиперэкспоненциального распределения,
+у оставшихся — выбирается линейно. Т.е. из N гиперэкспонент
+Q[i] - Q[1] ~ i - 1
+Q[i] = Q[1] + (Q[N] - Q[1]) * (i - 1) / (N - 1) 
+''')
+credits_label = wx.StaticText(settings_frame, label='''
+Автор программы: Суркис Антон Игоревич
+Тестировщик: Прикота Виталий Александрович
+''')
 
 settings_sizer = wx.GridBagSizer(2, hgap=10)
 settings_sizer.Add(variant_ctrl, (0, 0), flag=wx.EXPAND | wx.ALIGN_CENTER_VERTICAL)
@@ -120,6 +137,8 @@ settings_sizer.Add(hyper_exponents_count_label, (y_shift + 2, 1), flag=wx.EXPAND
 settings_sizer.Add(plot_hist_btn, (y_shift + 3, 0), (1, 2), flag=wx.EXPAND)
 settings_sizer.Add(plot_autocorr_btn, (y_shift + 4, 0), (1, 2), flag=wx.EXPAND)
 
+settings_sizer.Add(hyper_exponents_explanation_label, (y_shift + 5, 0), (1, 2), flag=wx.EXPAND)
+settings_sizer.Add(credits_label, (y_shift + 6, 0), (1, 2), flag=wx.EXPAND)
 
 def adjust_table_size(table: wx.grid.Grid, required_rows: int, required_cols: int):
     if table.NumberCols < required_cols:
