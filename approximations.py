@@ -14,12 +14,12 @@ class SeriesDescription:
         self.coeff_var = self.std / self.mean
 
         std_mean = self.std / len(series) ** .5
-        intervals = [{'p': 0.90, 't': 1.643},
-                     {'p': 0.95, 't': 1.960},
-                     {'p': 0.99, 't': 2.576}]
+        intervals = [{'label': '0.90', 'p': 0.90, 't': 1.643},
+                     {'label': '0.95', 'p': 0.95, 't': 1.960},
+                     {'label': '0.99', 'p': 0.99, 't': 2.576}]
         epsilons = {}
         for row in intervals:
-            epsilons[row['p']] = row['p'] * row['t'] * std_mean
+            epsilons[row['label']] = row['p'] * row['t'] * std_mean
         self.epsilon = epsilons
 
 

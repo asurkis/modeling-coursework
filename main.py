@@ -161,9 +161,9 @@ def update_table():
     for col, info in enumerate(used_results):
         stats_table.SetColLabelValue(col, f'{info.name}')
         stats_table.SetCellValue(0, col, f'{info.mean:0.{precision}f}')
-        stats_table.SetCellValue(1, col, f'{info.mean:0.{precision}f} ± {info.epsilon[0.90]:0.{precision}f}')
-        stats_table.SetCellValue(2, col, f'{info.mean:0.{precision}f} ± {info.epsilon[0.95]:0.{precision}f}')
-        stats_table.SetCellValue(3, col, f'{info.mean:0.{precision}f} ± {info.epsilon[0.99]:0.{precision}f}')
+        stats_table.SetCellValue(1, col, f'{info.mean:0.{precision}f} ± {info.epsilon["0.90"]:0.{precision}f}')
+        stats_table.SetCellValue(2, col, f'{info.mean:0.{precision}f} ± {info.epsilon["0.95"]:0.{precision}f}')
+        stats_table.SetCellValue(3, col, f'{info.mean:0.{precision}f} ± {info.epsilon["0.99"]:0.{precision}f}')
         stats_table.SetCellValue(4, col, f'{info.var:0.{precision}f}')
         stats_table.SetCellValue(5, col, f'{info.std:0.{precision}f}')
         stats_table.SetCellValue(6, col, f'{info.coeff_var:0.{precision}f}')
