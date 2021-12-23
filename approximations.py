@@ -93,10 +93,9 @@ def hyper_exponential(mean: float, coeff_var: float, q: float, size, rng=None) -
     t2 = (1 - (q / (2 * (1 - q)) * (coeff_var * coeff_var - 1)) ** 0.5) * mean
 
     exp1 = np.sign(t1) * rng.exponential(scale=np.abs(t1), size=size)
-    exp2 = np.sign(t2) * rng.exponential(scale=np.abs(t2), size=size)
     proc = rng.uniform(size=size) >= q
     exp1[proc] *= t2 / t1
-    return SeriesDescription('Гиперэкспоненциальное распределение', exp1 + exp2,
+    return SeriesDescription('Гиперэкспоненциальное распределение', exp1,
                              {'t1': t1, 't2': t2, 'q': q, 'p': 1 - q})
 
 
